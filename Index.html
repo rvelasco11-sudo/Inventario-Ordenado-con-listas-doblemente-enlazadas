@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario (Lista Doble Ordenada)</title>
+    <style>
+    /* Uso de ChatGPT para el CSS*/
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f9f9f9;
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 30px;
+        }
+        #controles {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        #controles h2 {
+            margin-top: 0;
+            text-align: center;
+            color: #333;
+        }
+        #controles input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        #controles button {
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .btn-accion {
+            background-color: #007aff;
+            color: white;
+        }
+        .btn-accion:hover {
+            background-color: #0056b3;
+        }
+        .btn-lista {
+            background-color: #34c759;
+            color: white;
+        }
+        .btn-lista:hover {
+            background-color: #2a9e48;
+        }
+        .btn-extraccion {
+            background-color: #ff3b30;
+            color: white;
+        }
+        .btn-extraccion:hover {
+            background-color: #c92c23;
+        }
+        #log-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        #output {
+            white-space: pre-wrap;
+            background: #f0f0f0;
+            border: 1px solid #e0e0e0;
+            padding: 15px;
+            min-height: 400px;
+            max-height: 600px;
+            overflow-y: auto;
+            border-radius: 5px;
+            font-family: "Courier New", Courier, monospace;
+            line-height: 1.5;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="controles">
+        <h2>Inventario (Lista Doble)</h2>
+        <input type="number" id="codigo" placeholder="Código (ej: 101)">
+        <input type="text" id="nombre" placeholder="Nombre (ej: Manzanas)">
+        <input type="number" id="cantidad" placeholder="Cantidad (ej: 50)">
+        <input type="number" id="costo" step="0.01" placeholder="Costo (ej: 1.99)">
+        
+        <hr>
+        <button id="btnAgregar" class="btn-accion">Agregar Producto</button>
+        <button id="btnBuscar" class="btn-accion">Buscar por Código</button>
+        <button id="btnEliminar" class="btn-accion">Eliminar por Código</button>
+        <hr>
+        <button id="btnListar" class="btn-lista">Listar (Ordenado)</button>
+        <button id="btnListarInverso" class="btn-lista">Listar (Inverso)</button>
+        <hr>
+        <button id="btnExtraerPrimero" class="btn-extraccion">Extraer Primero</button>
+        <button id="btnExtraerUltimo" class="btn-extraccion">Extraer Último</button>
+    </div>
+    
+    <div id="log-container">
+        <h3>Detalle de Operaciones:</h3>
+        <pre id="output">Inventario inicializado. Esperando acciones...</pre>
+    </div>
+
+    <script>
+        class Producto {
+            constructor(codigo, nombre, cantidad, costo) {
+                this.codigo = parseInt(codigo);
+                this.nombre = nombre;
+                this.cantidad = parseInt(cantidad);
+                this.costo = parseFloat(costo);
+            }
+
+            toString() {
+                return `[Cód: ${this.codigo}] ${this.nombre} (Cant: ${this.cantidad}, Costo: $${this.costo.toFixed(2)})`;
+            }
+        }
+
+        class Nodo {
+            constructor(producto) {
+                this.data = producto;
+                this.next = null;
+                this.prev = null;
+            }
+        }
+
+        class Inventario {
+            constructor() {
+                this.head = null;
+                this.tail = null;
+            }
+
+            agregar(producto) {
+                const newNode = new Nodo(producto);
+
+                if (!this.head) {
+                    this.head = newNode;
+                    this.tail = newNode;
+                    return `Agregado (lista vacía): ${producto}`;
+                }
+
+                let current = this.head;
+                while (current) {
+                    if (current.data.codigo === producto.codigo) {
+                        return `Error: El código ${producto.codigo} ya existe.`;
+                    }
+
+                    if (current.data.codigo > producto.codigo) {
+                        newNode.next = current;
+                        newNode.prev = current.prev;
+
+                        if (current.prev) {
+                            current.prev.next = newNode;
+                        } else {
+                            this.head = newNode;
+                        }
+                        current.prev = newNode;
+                        return `Agregado (antes de ${current.data.codigo}): ${producto}`;
+                    }
+
+                    if (!current.next) {
+                        current.next = newNode;
+                        newNode.prev = current;
+                        this.tail = newNode;
+                        return `Agregado (al final): ${producto}`;
+                    }
+                    
+                    current = current.next;
+                }
+            }
+
+            buscar(codigo) {
+                codigo = parseInt(codigo);
+                let current = this.head;
+
+                while (current) {
+                    if (current.data.codigo === codigo) {
+                        return `✅ Encontrado: ${current.data}`;
+                    }
+
+                    if (current.data.codigo > codigo) {
+                        return `❌ Búsqueda detenida. El código ${codigo} no existe (revisión hasta ${current.data.codigo}).`;
+                    }
+                    current = current.next;
+                }
+
+                return `❌ No encontrado: El código ${codigo} no está en el inventario.`;
+            }
+
+            eliminar(codigo) {
+                codigo = parseInt(codigo);
+                if (!this.head) return "Error: Lista vacía.";
+
+                let current = this.head;
+
+                while (current) {
+                    if (current.data.codigo === codigo) {
+                        break;
+                    }
+                    if (current.data.codigo > codigo) {
+                        return `❌ No encontrado: El código ${codigo} no existe.`;
+                    }
+                    current = current.next;
+                }
+
+                if (!current) {
+                    return `❌ No encontrado: El código ${codigo} no existe.`;
+                }
+
+                const dataEliminada = current.data.toString();
+
+                if (current === this.head) {
+                    this.head = current.next;
+                    if (this.head) {
+                        this.head.prev = null;
+                    } else {
+                        this.tail = null;
+                    }
+                }
+                else if (current === this.tail) {
+                    this.tail = current.prev;
+                    this.tail.next = null;
+                }
+                else {
+                    current.prev.next = current.next;
+                    current.next.prev = current.prev;
+                }
+
+                return `Eliminado: ${dataEliminada}`;
+            }
+
+            extraerPrimero() {
+                if (!this.head) return "Error: Lista vacía.";
+                
+                const dataExtraida = this.head.data.toString();
+                this.head = this.head.next;
+
+                if (this.head) {
+                    this.head.prev = null;
+                } else {
+                    this.tail = null;
+                }
+                return `Extraído (primero): ${dataExtraida}`;
+            }
+
+            extraerUltimo() {
+                if (!this.tail) return "Error: Lista vacía.";
+
+                const dataExtraida = this.tail.data.toString();
+                this.tail = this.tail.prev;
+
+                if (this.tail) {
+                    this.tail.next = null;
+                } else {
+                    this.head = null;
+                }
+                return `Extraído (último): ${dataExtraida}`;
+            }
+
+            listar() {
+                if (!this.head) return "Inventario vacío.";
+                let output = "--- Inventario (Ordenado por Código) ---\n";
+                let current = this.head;
+                let i = 1;
+                while (current) {
+                    output += `${i++}. ${current.data.toString()}\n`;
+                    current = current.next;
+                }
+                output += "------------------------------------------";
+                return output;
+            }
+
+            listarInverso() {
+                if (!this.tail) return "Inventario vacío.";
+                let output = "--- Inventario (Orden Inverso) ---\n";
+                let current = this.tail;
+                let i = 1;
+                while (current) {
+                    output += `${i++}. ${current.data.toString()}\n`;
+                    current = current.prev;
+                }
+                output += "--------------------------------------";
+                return output;
+            }
+        }
+
+        const inventario = new Inventario();
+
+        const inputCodigo = document.getElementById('codigo');
+        const inputNombre = document.getElementById('nombre');
+        const inputCantidad = document.getElementById('cantidad');
+        const inputCosto = document.getElementById('costo');
+        const outputDiv = document.getElementById('output');
+
+        function log(mensaje) {
+            console.log(mensaje);
+            outputDiv.textContent = `${new Date().toLocaleTimeString()}: ${mensaje}\n\n${outputDiv.textContent}`;
+        }
+
+        function limpiarCamposDatos() {
+            inputNombre.value = '';
+            inputCantidad.value = '';
+            inputCosto.value = '';
+        }
+
+        function validarDatosCompletos() {
+            return inputCodigo.value && inputNombre.value && inputCantidad.value && inputCosto.value;
+        }
+
+        document.getElementById('btnAgregar').addEventListener('click', () => {
+            if (!validarDatosCompletos()) {
+                log("Error: Debe completar todos los campos (Código, Nombre, Cantidad, Costo) para agregar.");
+                return;
+            }
+            try {
+                const producto = new Producto(
+                    inputCodigo.value,
+                    inputNombre.value,
+                    inputCantidad.value,
+                    inputCosto.value
+                );
+                const resultado = inventario.agregar(producto);
+                log(resultado);
+                if (!resultado.startsWith("Error")) {
+                    limpiarCamposDatos();
+                    inputCodigo.value = '';
+                }
+            } catch (e) {
+                log(`Error inesperado: ${e.message}`);
+            }
+        });
+
+        document.getElementById('btnBuscar').addEventListener('click', () => {
+            if (!inputCodigo.value) {
+                log("Error: Debe ingresar un Código para buscar.");
+                return;
+            }
+            const resultado = inventario.buscar(inputCodigo.value);
+            log(resultado);
+        });
+
+        document.getElementById('btnEliminar').addEventListener('click', () => {
+            if (!inputCodigo.value) {
+                log("Error: Debe ingresar un Código para eliminar.");
+                return;
+            }
+            const resultado = inventario.eliminar(inputCodigo.value);
+            log(resultado);
+        });
+
+        document.getElementById('btnListar').addEventListener('click', () => {
+            const listado = inventario.listar();
+            log(listado);
+        });
+
+        document.getElementById('btnListarInverso').addEventListener('click', () => {
+            const listado = inventario.listarInverso();
+            log(listado);
+        });
+
+        document.getElementById('btnExtraerPrimero').addEventListener('click', () => {
+            const resultado = inventario.extraerPrimero();
+            log(resultado);
+        });
+
+        document.getElementById('btnExtraerUltimo').addEventListener('click', () => {
+            const resultado = inventario.extraerUltimo();
+            log(resultado);
+        });
+    </script>
+</body>
+</html>
